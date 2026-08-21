@@ -17,6 +17,7 @@ from app.repositories.account_repository import AccountRepository
 from app.repositories.payee_repository import PayeeRepository
 from app.repositories.transaction_repository import TransactionRepository
 from app.repositories.audit_repository import AuditRepository
+from app.core.redis import RedisClient
 
 
 def mask_account_number(acc_num: str) -> str:
@@ -57,7 +58,18 @@ class BankingService:
     def get_account_balance(
         db: Session, user: User, account_id: uuid.UUID
     ) -> AccountBalanceResponse:
-        """Verify account ownership and return balance with localized narration."""
+        """Verify account ownership and return balance with localized narration (cached in Redis)."""
+        cache_key = f"sahayak:balance:{user.id}:{account_id}"
+
+        # 1. Attempt retrieval from Redis cache
+        cached_json = RedisClient.get(cache_key)
+        if cached_json:
+            try:
+                return AccountBalanceResponse.model_validate_json(cached_json)
+            except Exception:
+                pass
+
+        # 2. Query PostgreSQL source of truth
         account = AccountRepository.get_user_account_by_id(db, user.id, account_id)
         if not account:
             raise HTTPException(
@@ -68,12 +80,16 @@ class BankingService:
         formatted_balance = f"{account.balance:,.2f}"
         narration = f"Aapke account mein ₹{formatted_balance} bache hain."
 
-        return AccountBalanceResponse(
+        response = AccountBalanceResponse(
             account_id=account.id,
             balance=account.balance,
             currency=account.currency,
             narration=narration,
         )
+
+        # 3. Store in Redis cache with short TTL
+        RedisClient.set(cache_key, response.model_dump_json())
+        return response
 
     @staticmethod
     def get_payees(db: Session, user: User) -> List[PayeeResponse]:
@@ -172,6 +188,10 @@ class BankingService:
                 "reference": ref_code,
             },
         )
+
+        # Invalidate cached balance in Redis
+        cache_key = f"sahayak:balance:{user.id}:{account.id}"
+        RedisClient.delete(cache_key)
 
         return TransactionResponse(
             id=txn.id,

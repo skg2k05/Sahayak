@@ -14,6 +14,7 @@ from app.schemas.transaction_schema import (
 )
 from app.schemas.translator_schema import TranslateRequest, TranslateResponse
 from app.schemas.voice_schema import TranscriptionResponse, SynthesisRequest
+from app.schemas.fraud_schema import FraudCheckRequest, FraudCheckResponse
 
 __all__ = [
     "UserRegister",
@@ -31,4 +32,6 @@ __all__ = [
     "TranslateResponse",
     "TranscriptionResponse",
     "SynthesisRequest",
+    "FraudCheckRequest",
+    "FraudCheckResponse",
 ]
