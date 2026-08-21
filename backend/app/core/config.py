@@ -25,6 +25,8 @@ class Settings(BaseSettings):
 
     OPENAI_API_KEY: Union[str, None] = None
     OPENAI_MODEL: str = "gpt-4o-mini"
+    WHISPER_MODEL: str = "whisper-1"
+    MAX_AUDIO_SIZE_BYTES: int = 10 * 1024 * 1024  # 10 MB
 
 
     @field_validator("CORS_ORIGINS", mode="before")
