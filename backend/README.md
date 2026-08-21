@@ -116,9 +116,14 @@ alembic downgrade -1
 | `GET` | `/api/transactions` | Return authenticated user's transaction history (newest first) | Yes (Bearer JWT) |
 | `GET` | `/api/transactions/{transaction_id}` | Return detail for a single transaction owned by user | Yes (Bearer JWT) |
 
+### Transaction Translator (Phase B3)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/translator/explain` | Translate cryptic financial SMS alert into plain voice-first explanation | Yes (Bearer JWT) |
+
 ---
 
-## 8. Banking API Request & Response Examples
+## 8. API Request & Response Examples
 
 ### `GET /api/accounts`
 **Response (200 OK):**
@@ -133,37 +138,6 @@ alembic downgrade -1
     "currency": "INR",
     "upi_id": "savita@upi",
     "is_primary": true
-  }
-]
-```
-
-### `GET /api/accounts/{account_id}/balance`
-**Response (200 OK):**
-```json
-{
-  "account_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "balance": 5000.00,
-  "currency": "INR",
-  "narration": "Aapke account mein ₹5,000.00 bache hain."
-}
-```
-
-### `GET /api/payees`
-**Response (200 OK):**
-```json
-[
-  {
-    "id": "7ca85f64-5717-4562-b3fc-2c963f66afa7",
-    "name": "Electricity Board",
-    "upi_id": "electricity@upi",
-    "phone": "9998887776",
-    "bank_name": null,
-    "account_number": null,
-    "is_trusted": true,
-    "trusted_status": true,
-    "relationship": "Saved Payee",
-    "photo_url": null,
-    "monthly_limit": 50000.00
   }
 ]
 ```
@@ -198,6 +172,32 @@ alembic downgrade -1
 }
 ```
 
+### `POST /api/translator/explain` (Phase B3)
+**Request:**
+```json
+{
+  "text": "INR 1200 debited from A/C XX1234 at XYZ UPI on 21-08-2026",
+  "language": "hi"
+}
+```
+**Response (200 OK):**
+```json
+{
+  "summary": "₹1,200.00 aapke bank khate se kaate gaye hain.",
+  "amount": 1200.0,
+  "transaction_type": "debit",
+  "merchant": "XYZ",
+  "account_last4": "1234",
+  "plain_language": "₹1,200.00 aapke khate (aakhri 4 digits 1234) se XYZ par debit hue hain.",
+  "language": "hi"
+}
+```
+
+**Configuration & Fallback Behavior:**
+- Environment variable: `OPENAI_API_KEY` (optional). If unconfigured or on API error/rate-limit, the system seamlessly uses a deterministic regex parser fallback.
+- Validation: Input text must be non-empty and at most 1000 characters (returns `400 Bad Request` if invalid).
+- Unauthenticated access returns `401 Unauthorized`.
+
 ---
 
 ## 9. How to Start FastAPI Application
@@ -227,11 +227,10 @@ pytest
 
 ## 11. Scope & Deferred Features
 
-Phase B2 implements user-scoped Accounts, Payees, and Transaction processing APIs.
+Phase B3 implements the AI-powered Transaction Translator feature.
 
 The following features remain explicitly deferred to future implementation phases:
 - Voice processing & STT/TTS pipeline integration.
-- OpenAI API / LLM orchestrator integration.
 - Redis cache & session store integration.
 - Rule-based or ML fraud detection layer.
 - Frontend UI components or client-side assets.

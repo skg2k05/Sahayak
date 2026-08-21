@@ -12,6 +12,7 @@ from app.schemas.transaction_schema import (
     TransactionResponse,
     TransactionListResponse,
 )
+from app.schemas.translator_schema import TranslateRequest, TranslateResponse
 
 __all__ = [
     "UserRegister",
@@ -25,4 +26,6 @@ __all__ = [
     "TransactionCreate",
     "TransactionResponse",
     "TransactionListResponse",
+    "TranslateRequest",
+    "TranslateResponse",
 ]
