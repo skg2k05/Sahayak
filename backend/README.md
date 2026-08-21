@@ -127,6 +127,11 @@ alembic downgrade -1
 | `POST` | `/api/voice/transcribe` | Transcribe speech audio file into text using Whisper | Yes (Bearer JWT) |
 | `POST` | `/api/voice/synthesize` | Synthesize plain text into spoken MP3 audio stream using gTTS | Yes (Bearer JWT) |
 
+### Fraud & Risk Detection (Phase B5)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/fraud/check` | Perform explainable deterministic transaction risk evaluation | Yes (Bearer JWT) |
+
 ---
 
 ## 8. API Request & Response Examples
@@ -223,11 +228,46 @@ alembic downgrade -1
 **Response (200 OK):**
 - Binary MP3 Audio Stream (`Content-Type: audio/mpeg`)
 
-**Voice Pipeline Security & Limits:**
-- **Max Audio File Size**: 10 MB (`MAX_AUDIO_SIZE_BYTES`).
-- **Supported STT Formats**: `.mp3`, `.wav`, `.m4a`, `.ogg`, `.webm`, `.aac`, `.flac`.
-- **Supported TTS Languages**: English (`en`), Hindi (`hi`).
-- **Temporary File Lifecycle**: Uploaded audio is processed using temporary files that are guaranteed to be unlinked/deleted immediately in `finally` blocks. Synthesized TTS audio is buffered in-memory without persistent disk storage.
+### `POST /api/fraud/check` (Phase B5)
+**Request:**
+```json
+{
+  "account_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "amount": 60000.00,
+  "payee_id": "7ca85f64-5717-4562-b3fc-2c963f66afa7",
+  "transaction_type": "DEBIT"
+}
+```
+**Response (200 OK):**
+```json
+{
+  "risk_level": "medium",
+  "risk_score": 35,
+  "reasons": [
+    "Transaction amount of ₹60,000.00 exceeds the ₹50,000.00 large transaction threshold."
+  ]
+}
+```
+
+**Fraud Detection Rules & Score Thresholds:**
+- **Score Range**: Bounded `0` to `100`.
+- **Tiers**:
+  - `0 - 29`: **`low`** (Normal, safe transaction parameters)
+  - `30 - 69`: **`medium`** (Single elevated risk factor or multiple moderate indicators)
+  - `70 - 100`: **`high`** (Multiple compounded severe risk indicators)
+- **Transparent Explainable Rules**:
+  1. *Large Transaction*: Amount > ₹50,000 (+35 pts) or > ₹20,000 (+15 pts).
+  2. *Rapid Velocity*: >= 3 transactions in 5 minutes (+30 pts) or 2 transactions (+15 pts).
+  3. *High Frequency*: >= 5 transactions in the past hour (+25 pts).
+  4. *Balance Depletion*: Amount depletes > 80% of available account balance (+20 pts).
+  5. *Untrusted Payee*: Recipient payee is not marked as trusted contact (+15 pts).
+
+**Redis Caching Architecture (Phase B5):**
+- **Configuration**: `REDIS_URL` (`redis://localhost:6379/0`), `REDIS_CACHE_TTL_SECONDS` (default: 300s / 5 min).
+- **Target**: Account balance queries (`GET /api/accounts/{account_id}/balance`).
+- **User Scoping**: Cache keys strictly scoped as `sahayak:balance:{user_id}:{account_id}` preventing cross-user cache contamination.
+- **Invalidation**: Cache key is immediately deleted when a balance-changing transaction executes (`POST /api/transactions`).
+- **Graceful Fallback**: If Redis is offline or fails, requests transparently query PostgreSQL with zero user impact or 500 errors.
 
 ---
 
@@ -258,10 +298,8 @@ pytest
 
 ## 11. Scope & Deferred Features
 
-Phase B4 implements the Voice Pipeline (Whisper STT & gTTS TTS).
+Phase B5 implements Explainable Fraud Detection and Redis Caching.
 
 The following features remain explicitly deferred to future implementation phases:
-- Redis cache & session store integration.
-- Rule-based or ML fraud detection layer.
 - Frontend UI components or client-side assets.
 - Real UPI, bank API, or payment gateway integration.
