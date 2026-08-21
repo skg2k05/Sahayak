@@ -121,6 +121,12 @@ alembic downgrade -1
 | :--- | :--- | :--- | :--- |
 | `POST` | `/api/translator/explain` | Translate cryptic financial SMS alert into plain voice-first explanation | Yes (Bearer JWT) |
 
+### Voice Pipeline (Phase B4)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/voice/transcribe` | Transcribe speech audio file into text using Whisper | Yes (Bearer JWT) |
+| `POST` | `/api/voice/synthesize` | Synthesize plain text into spoken MP3 audio stream using gTTS | Yes (Bearer JWT) |
+
 ---
 
 ## 8. API Request & Response Examples
@@ -193,10 +199,35 @@ alembic downgrade -1
 }
 ```
 
-**Configuration & Fallback Behavior:**
-- Environment variable: `OPENAI_API_KEY` (optional). If unconfigured or on API error/rate-limit, the system seamlessly uses a deterministic regex parser fallback.
-- Validation: Input text must be non-empty and at most 1000 characters (returns `400 Bad Request` if invalid).
-- Unauthenticated access returns `401 Unauthorized`.
+### `POST /api/voice/transcribe` (Phase B4)
+**Request (multipart/form-data):**
+- `file`: `audio_sample.mp3` (Binary audio stream, max 10MB)
+- `language`: `en` (Optional spoken language code)
+
+**Response (200 OK):**
+```json
+{
+  "text": "Please explain my last transaction",
+  "language": "en"
+}
+```
+
+### `POST /api/voice/synthesize` (Phase B4)
+**Request:**
+```json
+{
+  "text": "Aapke account mein 4200 rupaye bache hain.",
+  "language": "hi"
+}
+```
+**Response (200 OK):**
+- Binary MP3 Audio Stream (`Content-Type: audio/mpeg`)
+
+**Voice Pipeline Security & Limits:**
+- **Max Audio File Size**: 10 MB (`MAX_AUDIO_SIZE_BYTES`).
+- **Supported STT Formats**: `.mp3`, `.wav`, `.m4a`, `.ogg`, `.webm`, `.aac`, `.flac`.
+- **Supported TTS Languages**: English (`en`), Hindi (`hi`).
+- **Temporary File Lifecycle**: Uploaded audio is processed using temporary files that are guaranteed to be unlinked/deleted immediately in `finally` blocks. Synthesized TTS audio is buffered in-memory without persistent disk storage.
 
 ---
 
@@ -227,10 +258,9 @@ pytest
 
 ## 11. Scope & Deferred Features
 
-Phase B3 implements the AI-powered Transaction Translator feature.
+Phase B4 implements the Voice Pipeline (Whisper STT & gTTS TTS).
 
 The following features remain explicitly deferred to future implementation phases:
-- Voice processing & STT/TTS pipeline integration.
 - Redis cache & session store integration.
 - Rule-based or ML fraud detection layer.
 - Frontend UI components or client-side assets.

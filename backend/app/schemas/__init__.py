@@ -13,6 +13,7 @@ from app.schemas.transaction_schema import (
     TransactionListResponse,
 )
 from app.schemas.translator_schema import TranslateRequest, TranslateResponse
+from app.schemas.voice_schema import TranscriptionResponse, SynthesisRequest
 
 __all__ = [
     "UserRegister",
@@ -28,4 +29,6 @@ __all__ = [
     "TransactionListResponse",
     "TranslateRequest",
     "TranslateResponse",
+    "TranscriptionResponse",
+    "SynthesisRequest",
 ]
