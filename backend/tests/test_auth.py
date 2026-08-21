@@ -1,0 +1,186 @@
+import pytest
+from app.repositories.user_repository import UserRepository
+
+
+def test_register_user_success(client):
+    """Verify user registration returns HTTP 201, safe user payload, and JWT token."""
+    payload = {
+        "full_name": "Anita Sharma",
+        "email": "anita@example.com",
+        "phone": "+919876543210",
+        "password": "example-password",
+        "preferred_language": "hi-IN",
+        "accessibility_settings": {"high_contrast": True},
+    }
+    response = client.post("/api/auth/register", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+    assert "user" in data
+
+    user = data["user"]
+    assert user["email"] == "anita@example.com"
+    assert user["full_name"] == "Anita Sharma"
+    assert user["phone"] == "+919876543210"
+    assert user["preferred_language"] == "hi-IN"
+    assert user["accessibility_settings"] == {"high_contrast": True}
+    assert user["is_active"] is True
+    assert "password" not in user
+    assert "password_hash" not in user
+
+
+def test_register_duplicate_email_rejection(client):
+    """Verify registration rejects duplicate email addresses with HTTP 400."""
+    payload = {
+        "full_name": "User One",
+        "email": "duplicate@example.com",
+        "password": "password123",
+    }
+    res1 = client.post("/api/auth/register", json=payload)
+    assert res1.status_code == 201
+
+    payload_duplicate = {
+        "full_name": "User Two",
+        "email": "duplicate@example.com",
+        "password": "differentpassword",
+    }
+    res2 = client.post("/api/auth/register", json=payload_duplicate)
+    assert res2.status_code == 400
+    assert "Email already registered" in res2.json()["detail"]
+
+
+def test_register_duplicate_phone_rejection(client):
+    """Verify registration rejects duplicate phone numbers with HTTP 400."""
+    payload1 = {
+        "full_name": "User One",
+        "email": "user1@example.com",
+        "phone": "+919999988888",
+        "password": "password123",
+    }
+    res1 = client.post("/api/auth/register", json=payload1)
+    assert res1.status_code == 201
+
+    payload2 = {
+        "full_name": "User Two",
+        "email": "user2@example.com",
+        "phone": "+919999988888",
+        "password": "password123",
+    }
+    res2 = client.post("/api/auth/register", json=payload2)
+    assert res2.status_code == 400
+    assert "Phone number already registered" in res2.json()["detail"]
+
+
+def test_login_user_success(client):
+    """Verify successful authentication returns HTTP 200 and access token."""
+    reg_payload = {
+        "full_name": "Rahul Verma",
+        "email": "rahul@example.com",
+        "password": "secret-password-123",
+    }
+    client.post("/api/auth/register", json=reg_payload)
+
+    login_payload = {
+        "email": "rahul@example.com",
+        "password": "secret-password-123",
+    }
+    response = client.post("/api/auth/login", json=login_payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+    assert data["user"]["email"] == "rahul@example.com"
+
+
+def test_login_invalid_password_rejection(client):
+    """Verify login with incorrect password returns HTTP 401."""
+    reg_payload = {
+        "full_name": "Rahul Verma",
+        "email": "rahul@example.com",
+        "password": "correct-password",
+    }
+    client.post("/api/auth/register", json=reg_payload)
+
+    login_payload = {
+        "email": "rahul@example.com",
+        "password": "wrong-password",
+    }
+    response = client.post("/api/auth/login", json=login_payload)
+    assert response.status_code == 401
+    assert "Invalid email or password" in response.json()["detail"]
+
+
+def test_get_me_without_token(client):
+    """Verify GET /api/auth/me without authorization header returns HTTP 401."""
+    response = client.get("/api/auth/me")
+    assert response.status_code == 401
+
+
+def test_get_me_with_valid_token(client):
+    """Verify GET /api/auth/me with valid bearer token returns user profile."""
+    reg_payload = {
+        "full_name": "Priya Singh",
+        "email": "priya@example.com",
+        "password": "priya-password",
+    }
+    reg_res = client.post("/api/auth/register", json=reg_payload)
+    token = reg_res.json()["access_token"]
+
+    headers = {"Authorization": f"Bearer {token}"}
+    response = client.get("/api/auth/me", headers=headers)
+    assert response.status_code == 200
+    user_data = response.json()
+    assert user_data["email"] == "priya@example.com"
+    assert user_data["full_name"] == "Priya Singh"
+
+
+def test_get_me_with_invalid_token(client):
+    """Verify GET /api/auth/me with invalid or forged token returns HTTP 401."""
+    headers = {"Authorization": "Bearer invalid.jwt.token.string"}
+    response = client.get("/api/auth/me", headers=headers)
+    assert response.status_code == 401
+
+
+def test_password_not_returned_in_api_responses(client):
+    """Verify password and password_hash fields are excluded from all API responses."""
+    reg_payload = {
+        "full_name": "Test Security",
+        "email": "security@example.com",
+        "password": "super-secret-pass",
+    }
+    reg_res = client.post("/api/auth/register", json=reg_payload)
+    token = reg_res.json()["access_token"]
+    user_reg = reg_res.json()["user"]
+
+    assert "password" not in user_reg
+    assert "password_hash" not in user_reg
+
+    login_res = client.post(
+        "/api/auth/login",
+        json={"email": "security@example.com", "password": "super-secret-pass"},
+    )
+    user_login = login_res.json()["user"]
+    assert "password" not in user_login
+    assert "password_hash" not in user_login
+
+    me_res = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    user_me = me_res.json()
+    assert "password" not in user_me
+    assert "password_hash" not in user_me
+
+
+def test_password_stored_as_hash_rather_than_plaintext(client, db_session):
+    """Verify password is stored as a secure bcrypt hash in the database, never plaintext."""
+    plaintext_password = "my-secret-password-123"
+    reg_payload = {
+        "full_name": "Hash Check",
+        "email": "hashcheck@example.com",
+        "password": plaintext_password,
+    }
+    client.post("/api/auth/register", json=reg_payload)
+
+    db_user = UserRepository.get_by_email(db_session, "hashcheck@example.com")
+    assert db_user is not None
+    assert db_user.password_hash != plaintext_password
+    assert db_user.password_hash.startswith("$2b$")

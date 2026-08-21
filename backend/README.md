@@ -2,7 +2,7 @@
 
 Sahayak is a voice-first, AI-powered accessible banking companion for elderly, visually impaired, and low-literacy users in India.
 
-This directory contains the FastAPI backend service foundation established in **Phase B0**.
+This directory contains the FastAPI backend service foundation established in **Phase B0** and extended in **Phase B1**.
 
 ---
 
@@ -32,7 +32,7 @@ source .venv/bin/activate
 
 ## 3. Dependency Installation
 
-Install the required core dependencies for Phase B0:
+Install the required dependencies for Phase B1:
 
 ```bash
 pip install -r requirements.txt
@@ -54,13 +54,65 @@ cp .env.example .env
 - `ENVIRONMENT`: Runtime environment (`development`, `staging`, `production`).
 - `DATABASE_URL`: PostgreSQL connection string (`postgresql://user:password@localhost:5432/sahayak_db`).
 - `CORS_ORIGINS`: Allowed origins for CORS as a JSON array string or comma-separated values.
+- `JWT_SECRET_KEY`: Secret key used for signing JWT authentication tokens.
+- `JWT_ALGORITHM`: Signing algorithm for JWTs (default: `HS256`).
+- `ACCESS_TOKEN_EXPIRE_MINUTES`: Expiration duration for access tokens in minutes (default: `1440`).
 
 > [!NOTE]
-> Secrets and real credentials should never be committed to repository. Always maintain local overrides in `.env`.
+> Secrets and real credentials should never be committed to the repository. Always maintain local overrides in `.env`.
 
 ---
 
-## 5. How to Start FastAPI Application
+## 5. Database Models (Phase B1)
+
+SQLAlchemy 2.0 domain entity models implemented in `app/models/`:
+
+- **User (`users`)**: Primary user account record (`id` [UUID], `full_name`, `email`, `phone`, `password_hash`, `preferred_language`, `accessibility_settings`, `is_active`, `created_at`, `updated_at`).
+- **Account (`accounts`)**: User bank accounts (`id` [UUID], `user_id` [FK], `account_number`, `account_type`, `bank_name`, `balance` [Numeric], `currency`, `is_active`, `created_at`, `updated_at`).
+- **Payee (`payees`)**: Saved transaction beneficiaries (`id` [UUID], `user_id` [FK], `name`, `upi_id`, `phone`, `bank_name`, `account_number`, `is_trusted`, `created_at`, `updated_at`).
+- **Transaction (`transactions`)**: Financial transaction persistence foundation (`id` [UUID], `account_id` [FK], `payee_id` [FK], `transaction_type`, `amount` [Numeric], `currency`, `status`, `reference`, `description`, `created_at`).
+- **SMSTranslation (`sms_translations`)**: Stored bank SMS explanations (`id` [UUID], `user_id` [FK], `original_message`, `translated_message`, `detected_language`, `created_at`).
+- **AuditLog (`audit_logs`)**: Security and system activity audit trail (`id` [UUID], `user_id` [FK], `action`, `resource_type`, `resource_id`, `metadata_json`, `created_at`).
+- **FeatureFlag (`feature_flags`)**: Runtime feature toggle configuration (`id` [UUID], `name`, `enabled`, `description`, `created_at`, `updated_at`).
+
+---
+
+## 6. Database & Alembic Migration Commands
+
+Alembic is configured to read database settings dynamically from `app/core/config.py`.
+
+Migration commands:
+
+```bash
+# Verify migration status and current head revision
+alembic heads
+
+# Apply all pending migrations to PostgreSQL database
+alembic upgrade head
+
+# Rollback the last applied migration
+alembic downgrade -1
+```
+
+Migration script created in Phase B1:
+- `alembic/versions/001_b1_create_tables.py`
+
+---
+
+## 7. Authentication API Endpoints (Phase B1)
+
+FastAPI endpoints provided under `/api/auth`:
+
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/register` | Register a new user with hashed password and return JWT | No |
+| `POST` | `/api/auth/login` | Authenticate credentials and return JWT access token | No |
+| `GET` | `/api/auth/me` | Fetch profile of currently authenticated user | Yes (Bearer JWT) |
+| `GET` | `/health` | Verify operational status of the service | No |
+
+---
+
+## 8. How to Start FastAPI Application
 
 Run the application locally with Uvicorn:
 
@@ -68,16 +120,16 @@ Run the application locally with Uvicorn:
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Once running, interactive API documentation is available at:
+Interactive API documentation:
 - Swagger UI: `http://127.0.0.1:8000/docs`
 - ReDoc: `http://127.0.0.1:8000/redoc`
 - Health check: `http://127.0.0.1:8000/health`
 
 ---
 
-## 6. How to Run Tests
+## 9. How to Run Tests
 
-Run the test suite using `pytest`:
+Run the full automated test suite using `pytest`:
 
 ```bash
 pytest
@@ -85,43 +137,12 @@ pytest
 
 ---
 
-## 7. Database & Alembic Usage
+## 10. Scope & Deferred Features
 
-Database ORM infrastructure is powered by SQLAlchemy 2.0. Alembic is configured to read database parameters dynamically from application settings.
+Phase B1 implements database models, Alembic migrations, secure authentication, and user profile management.
 
-Common Alembic migration workflow for future phases:
-
-```bash
-# Generate a new migration script
-alembic revision --autogenerate -m "describe changes"
-
-# Apply pending migrations to database
-alembic upgrade head
-
-# Rollback last migration
-alembic downgrade -1
-```
-
----
-
-## 8. Current B0 Scope
-
-Phase B0 focuses exclusively on establishing a reliable backend architecture:
-- Project folder modularization (`app/core`, `app/api`, `app/models`, `app/schemas`, `app/services`, `app/repositories`, `app/utils`).
-- Centralized Pydantic `BaseSettings` configuration.
-- Database engine, session factory (`SessionLocal`), and `DeclarativeBase` ORM setup.
-- Alembic migration initialization.
-- FastAPI app entry point with CORS middleware.
-- Operational `GET /health` endpoint.
-- Automated testing suite with `pytest`.
-
----
-
-## 9. Intentionally NOT Implemented Yet
-
-The following features are explicitly deferred to subsequent implementation phases:
-- User Authentication & Authorization (JWT / OAuth2).
-- Core Banking APIs (Accounts, Payees, Transactions).
+The following features remain explicitly deferred to future implementation phases:
+- Core banking transaction processing & money transfer business logic.
 - Voice processing & STT/TTS pipeline integration.
 - OpenAI API / LLM orchestrator integration.
 - Redis cache & session store integration.

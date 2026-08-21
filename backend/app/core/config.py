@@ -19,6 +19,11 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
     ]
 
+    JWT_SECRET_KEY: str = "sahayak-development-secret-key-change-in-production-2026"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v: Union[List[str], str]) -> List[str]:
