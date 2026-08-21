@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# Environment Variables
+.env
+.env.local
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.hypothesis/
+
+# IDE & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Alembic
+alembic.ini.local
