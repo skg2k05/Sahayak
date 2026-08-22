@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     AUTH_RATE_LIMIT_MAX_ATTEMPTS: int = 5
     AUTH_RATE_LIMIT_WINDOW_SECONDS: int = 900  # 15 minutes
 
+    GEMINI_API_KEY: Union[str, None] = None
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+
+
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
