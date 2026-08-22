@@ -378,3 +378,27 @@ def test_transaction_explanation(client, auth_user_and_headers):
         data = response.json()
         assert data["intent"] == "TRANSACTION_EXPLANATION"
         assert len(data["response"]) > 0
+
+
+def test_multilingual_7_languages_support(client, auth_user_and_headers):
+    """13. Verify all 7 supported languages (en, hi, kn, ta, te, mr, bn) return native-script responses."""
+    _, headers, _, _, _ = auth_user_and_headers
+
+    languages = [
+        ("en", "Your current balance"),
+        ("hi", "आपके खाते"),
+        ("kn", "ನಿಮ್ಮ ಖಾತೆ"),
+        ("ta", "உங்கள் கணக்கு"),
+        ("te", "మీ ఖాతా"),
+        ("mr", "तुमच्या खात्यात"),
+        ("bn", "আপনার অ্যাকাউন্ট"),
+    ]
+
+    for lang_code, expected_substring in languages:
+        payload = {"message": "balance", "language": lang_code}
+        response = client.post("/api/chat", json=payload, headers=headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["language"] == lang_code
+        assert expected_substring in data["response"]
+

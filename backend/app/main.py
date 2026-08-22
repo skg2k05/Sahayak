@@ -1,9 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
+from app.core.database import init_db
 from app.api.routes import health, auth, accounts, payees, transactions, translator, voice, fraud, chat
 
 settings = get_settings()
+
+# Initialize database schema automatically
+init_db()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -11,6 +15,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
 
 # CORS configuration
 if settings.CORS_ORIGINS:

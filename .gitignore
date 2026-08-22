@@ -1,0 +1,6 @@
+vite-dev.log
+node_modules/
+dist/
+.env
+.env.local
+backend/*.sqlite3

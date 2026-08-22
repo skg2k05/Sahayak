@@ -221,3 +221,28 @@ def test_synthesize_gtts_failure_handled(mock_gtts_cls, client, auth_header):
     response = client.post("/api/voice/synthesize", json=payload, headers=auth_header)
     assert response.status_code == 502
     assert "text-to-speech synthesis failed" in response.json()["detail"].lower()
+
+
+@patch("app.services.voice_service.gTTS")
+def test_synthesize_speech_normalization_masked_account(mock_gtts_cls, client, auth_header):
+    """Verify masked account numbers (XXXXXX4237) are normalized into natural speech before gTTS."""
+    mock_tts = MagicMock()
+    mock_gtts_cls.return_value = mock_tts
+
+    def mock_write(fp):
+        fp.write(b"AUDIO")
+
+    mock_tts.write_to_fp.side_effect = mock_write
+
+    # Test English
+    payload_en = {"text": "Your account XXXXXX4237 balance is active.", "language": "en"}
+    res_en = client.post("/api/voice/synthesize", json=payload_en, headers=auth_header)
+    assert res_en.status_code == 200
+    mock_gtts_cls.assert_called_with(text="Your account account ending in 4 2 3 7 balance is active.", lang="en", slow=False)
+
+    # Test Hindi
+    payload_hi = {"text": "आपका खाता XXXXXX4237 सक्रिय है।", "language": "hi"}
+    res_hi = client.post("/api/voice/synthesize", json=payload_hi, headers=auth_header)
+    assert res_hi.status_code == 200
+    mock_gtts_cls.assert_called_with(text="आपका खाता 4 2 3 7 पर समाप्त होने वाला खाता सक्रिय है।", lang="hi", slow=False)
+
