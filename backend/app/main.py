@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
-from app.api.routes import health, auth, accounts, payees, transactions, translator, voice, fraud
+from app.api.routes import health, auth, accounts, payees, transactions, translator, voice, fraud, chat
 
 settings = get_settings()
 
@@ -22,19 +22,25 @@ if settings.CORS_ORIGINS:
         allow_headers=["*"],
     )
 
+routers_list = [
+    health.router,
+    auth.router,
+    accounts.router,
+    payees.router,
+    transactions.router,
+    translator.router,
+    voice.router,
+    fraud.router,
+    chat.router,
+]
+
 # Include routers via standard FastAPI include_router
-app.include_router(health.router)
-app.include_router(auth.router)
-app.include_router(accounts.router)
-app.include_router(payees.router)
-app.include_router(transactions.router)
-app.include_router(translator.router)
-app.include_router(voice.router)
-app.include_router(fraud.router)
+for r in routers_list:
+    app.include_router(r)
 
 # Register route objects on app.router.routes to support direct route path introspection
-for router in [health.router, auth.router, accounts.router, payees.router, transactions.router, translator.router, voice.router, fraud.router]:
-    for route in router.routes:
+for r in routers_list:
+    for route in r.routes:
         route.dependency_overrides_provider = app
         if route not in app.router.routes:
             app.router.routes.append(route)
