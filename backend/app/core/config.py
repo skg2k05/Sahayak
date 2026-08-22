@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     REDIS_URL: Union[str, None] = "redis://localhost:6379/0"
     REDIS_CACHE_TTL_SECONDS: int = 300  # 5 minutes
 
+    AUTH_RATE_LIMIT_MAX_ATTEMPTS: int = 5
+    AUTH_RATE_LIMIT_WINDOW_SECONDS: int = 900  # 15 minutes
+
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

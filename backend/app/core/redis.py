@@ -69,3 +69,25 @@ class RedisClient:
         except Exception as exc:
             logger.warning(f"Redis DELETE failed for key '{key}': {exc}")
             return False
+
+    @classmethod
+    def increment_rate_limit(cls, key: str, window_seconds: int) -> Optional[int]:
+        """Atomically increment hit counter for rate limiting and set expiration window. Returns count or None on failure."""
+        client = cls.get_client()
+        if client is None:
+            return None
+        try:
+            pipe = client.pipeline()
+            pipe.incr(key)
+            pipe.ttl(key)
+            results = pipe.execute()
+            count = int(results[0])
+            ttl = int(results[1]) if results[1] is not None else -1
+
+            # If key is newly created (ttl == -1 or not set), initialize expiration window
+            if ttl < 0:
+                client.expire(key, window_seconds)
+            return count
+        except Exception as exc:
+            logger.warning(f"Redis rate limit increment failed for key '{key}': {exc}")
+            return None
