@@ -132,9 +132,47 @@ alembic downgrade -1
 | :--- | :--- | :--- | :--- |
 | `POST` | `/api/fraud/check` | Perform explainable deterministic transaction risk evaluation | Yes (Bearer JWT) |
 
+### AI Banking Chatbot (Phase B7)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/chat` | Secure AI banking chatbot with intent routing and zero PII data minimization | Yes (Bearer JWT) |
+
 ---
 
 ## 8. API Request & Response Examples
+
+### `POST /api/chat` (Phase B7)
+**Request:**
+```json
+{
+  "message": "What is my account balance?",
+  "language": "en"
+}
+```
+**Response (200 OK):**
+```json
+{
+  "response": "Your current balance for account XXXXXX9012 is ₹4,200.00.",
+  "language": "en",
+  "intent": "BALANCE"
+}
+```
+
+**Supported Chatbot Intents:**
+- `BALANCE`: Retrieve authenticated user's account balance deterministically.
+- `ACCOUNT`: Retrieve authenticated user's account status with masked account number (`XXXXXX1234`).
+- `RECENT_TRANSACTIONS`: Retrieve minimal details of authenticated user's latest transaction.
+- `TRANSACTION_EXPLANATION`: Explain latest user transaction using `TransactionTranslatorService`.
+- `FRAUD`: Return account security risk evaluation using `FraudService`.
+- `UNSUPPORTED_ACTION`: Safely decline financial actions (e.g. transfer money, change PIN/password) and instruct user to use secure transaction flow.
+- `GENERAL_BANKING_QUESTION`: Answer educational banking queries (e.g. "What is UPI?", "What is IFSC?") without sending user PII to OpenAI.
+- `UNKNOWN`: Respond safely to unrecognized input or prompt injection attempts.
+
+**Security Controls:**
+- **Controlled Orchestration**: LLM cannot directly execute SQL, database queries, or backend tools.
+- **Strict User Isolation**: All database queries are hard-scoped to `current_user.id` from JWT session.
+- **Zero PII Data Minimization**: Passwords, PINs, CVVs, full account numbers, and DB records are never passed to OpenAI.
+
 
 ### `GET /api/accounts`
 **Response (200 OK):**
