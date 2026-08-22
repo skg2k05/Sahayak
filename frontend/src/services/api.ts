@@ -140,4 +140,15 @@ export const api = {
     const blob = await res.blob();
     return URL.createObjectURL(blob);
   },
+
+  chat: (message: string, language: string = 'en', token?: string) =>
+    request<{ response: string; language: string; intent: string }>(
+      '/api/chat',
+      {
+        method: 'POST',
+        body: JSON.stringify({ message, language }),
+      },
+      token
+    ),
 };
+

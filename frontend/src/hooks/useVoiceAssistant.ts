@@ -105,7 +105,7 @@ export function useVoiceAssistant(token: string | null, language: 'en' | 'hi' = 
   };
 
   const processTextQuery = useCallback(
-    (text: string) => {
+    async (text: string) => {
       if (!text.trim()) {
         setVoiceState('idle');
         return;
@@ -116,37 +116,38 @@ export function useVoiceAssistant(token: string | null, language: 'en' | 'hi' = 
       setErrorMessage('');
       setKnowledgeResponse(null);
 
-      // Clear any previous timeout
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
-      // Timeout safeguard so state is NEVER stuck indefinitely
-      timeoutRef.current = setTimeout(() => {
-        if (voiceState === 'processing') {
-          setErrorMessage("Sahayak's AI service took too long. You can try again or use the banking shortcuts below.");
-          setVoiceState('idle');
-        }
-      }, 5000);
-
-      // Fast query resolution
-      setTimeout(() => {
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-
-        // Check product knowledge base first
-        const knowledgeAnswer = findKnowledgeAnswer(text, language);
-        if (knowledgeAnswer) {
-          setKnowledgeResponse(knowledgeAnswer);
+      try {
+        // Query backend AI chatbot service
+        const chatRes = await api.chat(text, language, token || undefined);
+        if (chatRes && chatRes.response) {
+          setKnowledgeResponse(chatRes.response);
           setVoiceState('confirmation');
+          speakText(chatRes.response);
           return;
         }
+      } catch (err) {
+        console.warn('Backend AI chatbot notice:', err);
+      }
 
-        // Fallback to voice action command parser
-        const command = parseVoiceCommand(text);
-        setParsedCommand(command);
+      // Check product knowledge base fallback
+      const knowledgeAnswer = findKnowledgeAnswer(text, language);
+      if (knowledgeAnswer) {
+        setKnowledgeResponse(knowledgeAnswer);
         setVoiceState('confirmation');
-      }, 300);
+        speakText(knowledgeAnswer);
+        return;
+      }
+
+      // Voice action command parser fallback
+      const command = parseVoiceCommand(text);
+      setParsedCommand(command);
+      setVoiceState('confirmation');
     },
-    [language, voiceState]
+    [language, token, speakText]
   );
+
 
   const startListening = useCallback(() => {
     setErrorMessage('');

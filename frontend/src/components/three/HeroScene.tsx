@@ -148,8 +148,9 @@ export default function HeroScene() {
 
         <PresentationControls
           global={false}
-          snap={{ mass: 0.6, tension: 180 }}
+          snap={true}
           rotation={[0, 0, 0]}
+
           polar={[-0.35, 0.35]}
           azimuth={[-0.5, 0.5]}
           cursor

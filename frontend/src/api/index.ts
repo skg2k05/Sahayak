@@ -6,6 +6,7 @@ export * from './payees';
 export * from './translator';
 export * from './voice';
 export * from './fraud';
+export * from './chat';
 
 import { loginUser, registerUser, getMe } from './auth';
 import { getAccounts, getAccountBalance } from './accounts';
@@ -14,6 +15,7 @@ import { getPayees } from './payees';
 import { explainTransaction } from './translator';
 import { transcribeAudio, synthesizeSpeech } from './voice';
 import { checkFraudRisk } from './fraud';
+import { sendChatMessage } from './chat';
 
 export const api = {
   login: loginUser,
@@ -29,4 +31,6 @@ export const api = {
   translate: explainTransaction,
   transcribe: transcribeAudio,
   synthesize: synthesizeSpeech,
+  chat: sendChatMessage,
 };
+
