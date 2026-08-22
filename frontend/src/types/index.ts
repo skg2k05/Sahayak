@@ -70,11 +70,14 @@ export type VoiceCommandAction =
   | { type: 'OPEN_SETTINGS' }
   | { type: 'UNKNOWN'; query: string };
 
+import type { SupportedLanguageCode } from '../config/languages';
+
 export type AccessibilitySettings = {
   largeText: boolean;
   highContrast: boolean;
   reduceMotion: boolean;
   voiceGuidance: boolean;
-  language: 'en' | 'hi';
+  language: SupportedLanguageCode;
 };
+
 

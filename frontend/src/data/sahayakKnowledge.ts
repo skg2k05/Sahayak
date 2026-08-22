@@ -195,7 +195,7 @@ export const SAHAYAK_KNOWLEDGE: KnowledgeEntry[] = [
   },
 ];
 
-export function findKnowledgeAnswer(query: string, language: 'en' | 'hi' = 'en'): string | null {
+export function findKnowledgeAnswer(query: string, language: string = 'en'): string | null {
   const q = query.toLowerCase().trim();
   if (!q) return null;
 
@@ -217,8 +217,9 @@ export function findKnowledgeAnswer(query: string, language: 'en' | 'hi' = 'en')
   }
 
   if (bestMatch && maxMatchCount > 2) {
-    return language === 'hi' ? bestMatch.answerHi : bestMatch.answerEn;
+    return language.toLowerCase().slice(0, 2) === 'hi' ? bestMatch.answerHi : bestMatch.answerEn;
   }
 
   return null;
 }
+

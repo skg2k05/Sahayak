@@ -12,8 +12,38 @@ from app.schemas.voice_schema import TranscriptionResponse, SynthesisRequest
 
 settings = get_settings()
 
+import re
+
 ALLOWED_AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".ogg", ".webm", ".aac", ".flac"}
-SUPPORTED_TTS_LANGUAGES = {"en", "hi"}
+SUPPORTED_TTS_LANGUAGES = {"en", "hi", "kn", "ta", "te", "mr", "bn"}
+
+
+def normalize_text_for_speech(text: str, lang: str = "en") -> str:
+    """Normalize masked account numbers (XXXXXX4237 / •••• 4237) into natural spoken phrases."""
+    if not text:
+        return ""
+
+    normalized = text.strip()
+    lang_code = (lang or "en").lower().strip()[:2]
+
+    def _account_replacer(match):
+        digits = " ".join(match.group(1))
+        if lang_code == "hi":
+            return f"{digits} पर समाप्त होने वाला खाता"
+        elif lang_code == "kn":
+            return f"{digits} ರಲ್ಲಿ ಕೊನೆಗೊಳ್ಳುವ ಖಾತೆ"
+        elif lang_code == "ta":
+            return f"{digits} இல் முடிவடையும் கணக்கு"
+        elif lang_code == "te":
+            return f"{digits} తో ముగిసే ఖాతా"
+        elif lang_code == "mr":
+            return f"{digits} शेवटी असलेले खाते"
+        elif lang_code == "bn":
+            return f"{digits} দিয়ে শেষ হওয়া অ্যাকাউন্ট"
+        else:
+            return f"account ending in {digits}"
+
+    return re.sub(r"(?:X{3,}|x{3,}|•{3,}|[*]{3,})\s*(\d{4})", _account_replacer, normalized)
 
 
 class VoiceService:
@@ -70,7 +100,7 @@ class VoiceService:
             temp_file.close()
 
             client = OpenAI(api_key=settings.OPENAI_API_KEY)
-            target_lang = language if language in ["en", "hi"] else None
+            target_lang = language[:2].lower() if language and language[:2].lower() in SUPPORTED_TTS_LANGUAGES else None
 
             with open(temp_path, "rb") as audio_fh:
                 transcription = client.audio.transcriptions.create(
@@ -101,7 +131,7 @@ class VoiceService:
 
     @staticmethod
     def synthesize_speech(request: SynthesisRequest) -> bytes:
-        """Synthesize text into speech audio bytes using gTTS."""
+        """Synthesize text into speech audio bytes using gTTS with speech normalization."""
         clean_text = request.text.strip() if request.text else ""
         if not clean_text:
             raise HTTPException(
@@ -110,12 +140,8 @@ class VoiceService:
             )
 
         # Normalize and validate language
-        lang_code = request.language.lower().strip() if request.language else "en"
-        if lang_code in ["hindi", "hi-in"]:
-            lang_code = "hi"
-        elif lang_code in ["english", "en-us", "en-in"]:
-            lang_code = "en"
-
+        raw_lang = request.language.lower().strip() if request.language else "en"
+        lang_code = raw_lang[:2]
         if lang_code not in SUPPORTED_TTS_LANGUAGES:
             supported_str = ", ".join(sorted(SUPPORTED_TTS_LANGUAGES))
             raise HTTPException(
@@ -123,8 +149,12 @@ class VoiceService:
                 detail=f"Unsupported language '{request.language}'. Supported languages: {supported_str}",
             )
 
+        # Apply speech normalization to convert masked accounts to natural spoken text
+        speech_text = normalize_text_for_speech(clean_text, lang_code)
+
+
         try:
-            tts = gTTS(text=clean_text, lang=lang_code, slow=False)
+            tts = gTTS(text=speech_text, lang=lang_code, slow=False)
             buffer = io.BytesIO()
             tts.write_to_fp(buffer)
             buffer.seek(0)
@@ -134,3 +164,4 @@ class VoiceService:
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=f"Text-to-speech synthesis failed: {str(exc)}",
             )
+

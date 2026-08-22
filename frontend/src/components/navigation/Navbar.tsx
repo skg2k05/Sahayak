@@ -3,6 +3,8 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Mic, Sliders, Menu, X, LogOut, ShieldCheck, User as UserIcon, Users } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAccessibility } from '../../context/AccessibilityContext';
+import { SUPPORTED_LANGUAGES, type SupportedLanguageCode } from '../../config/languages';
+
 
 export const Navbar: React.FC<{ onOpenAccessibility: () => void }> = ({ onOpenAccessibility }) => {
   const { user, logout, token } = useAuth();
@@ -121,25 +123,23 @@ export const Navbar: React.FC<{ onOpenAccessibility: () => void }> = ({ onOpenAc
 
         {/* Right Action Bar */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Language Selector */}
-          <div className="flex items-center rounded-xl bg-zinc-100 p-1 border border-zinc-200" role="group" aria-label="Language selector">
-            <button
-              onClick={() => setLanguage('en')}
-              className={`focus-ring rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-                settings.language === 'en' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'
-              }`}
+          {/* Language Selector Dropdown */}
+
+          <div className="flex items-center">
+            <select
+              value={settings.language}
+              onChange={(e) => setLanguage(e.target.value as SupportedLanguageCode)}
+              className="focus-ring rounded-xl bg-zinc-100 px-2.5 py-1.5 text-xs font-bold text-zinc-800 border border-zinc-200 cursor-pointer hover:bg-zinc-200/60 transition"
+              aria-label="Select language"
             >
-              English
-            </button>
-            <button
-              onClick={() => setLanguage('hi')}
-              className={`focus-ring rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-                settings.language === 'hi' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'
-              }`}
-            >
-              हिंदी
-            </button>
+              {SUPPORTED_LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.nativeName} ({l.name})
+                </option>
+              ))}
+            </select>
           </div>
+
 
           {/* Accessibility Controls Button */}
           <button

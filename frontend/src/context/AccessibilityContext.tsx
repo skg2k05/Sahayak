@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { AccessibilitySettings } from '../types';
 
+import type { SupportedLanguageCode } from '../config/languages';
+
 type AccessibilityContextType = {
   settings: AccessibilitySettings;
   updateSettings: (newSettings: Partial<AccessibilitySettings>) => void;
@@ -8,8 +10,9 @@ type AccessibilityContextType = {
   toggleHighContrast: () => void;
   toggleReduceMotion: () => void;
   toggleVoiceGuidance: () => void;
-  setLanguage: (lang: 'en' | 'hi') => void;
+  setLanguage: (lang: SupportedLanguageCode) => void;
 };
+
 
 const defaultSettings: AccessibilitySettings = {
   largeText: false,
@@ -70,7 +73,8 @@ export const AccessibilityProvider: React.FC<{ children: React.ReactNode }> = ({
   const toggleHighContrast = () => updateSettings({ highContrast: !settings.highContrast });
   const toggleReduceMotion = () => updateSettings({ reduceMotion: !settings.reduceMotion });
   const toggleVoiceGuidance = () => updateSettings({ voiceGuidance: !settings.voiceGuidance });
-  const setLanguage = (language: 'en' | 'hi') => updateSettings({ language });
+  const setLanguage = (language: SupportedLanguageCode) => updateSettings({ language });
+
 
   return (
     <AccessibilityContext.Provider

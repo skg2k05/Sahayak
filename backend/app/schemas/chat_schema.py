@@ -1,5 +1,7 @@
-from typing import Literal
 from pydantic import BaseModel, Field, field_validator
+
+SUPPORTED_CHAT_LANGUAGES = {"en", "hi", "kn", "ta", "te", "mr", "bn"}
+
 
 
 class ChatRequest(BaseModel):
@@ -27,9 +29,9 @@ class ChatRequest(BaseModel):
     @field_validator("language")
     @classmethod
     def validate_language(cls, v: str) -> str:
-        clean = v.lower().strip()
-        if clean in ["hi", "hindi"]:
-            return "hi"
+        clean = v.lower().strip()[:2]
+        if clean in SUPPORTED_CHAT_LANGUAGES:
+            return clean
         return "en"
 
 
@@ -40,8 +42,9 @@ class ChatResponse(BaseModel):
         ...,
         json_schema_extra={"example": "Your current balance is ₹4,200.00."},
     )
-    language: Literal["en", "hi"] = Field("en", json_schema_extra={"example": "en"})
+    language: str = Field("en", json_schema_extra={"example": "en"})
     intent: str = Field(
         ...,
         json_schema_extra={"example": "BALANCE"},
     )
+

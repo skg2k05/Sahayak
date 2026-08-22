@@ -1,5 +1,8 @@
 import { useState, useRef, useCallback } from 'react';
 import type { VoiceState, VoiceCommandAction } from '../types';
+import type { SupportedLanguageCode } from '../config/languages';
+import { getLanguageConfig } from '../config/languages';
+import { normalizeTextForSpeech } from '../utils/speechNormalizer';
 import { api } from '../api';
 import { findKnowledgeAnswer } from '../data/sahayakKnowledge';
 
@@ -57,7 +60,7 @@ export function parseVoiceCommand(text: string): VoiceCommandAction {
   return { type: 'UNKNOWN', query: text };
 }
 
-export function useVoiceAssistant(token: string | null, language: 'en' | 'hi' = 'en') {
+export function useVoiceAssistant(token: string | null, language: SupportedLanguageCode = 'en') {
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
   const [transcript, setTranscript] = useState<string>('');
   const [parsedCommand, setParsedCommand] = useState<VoiceCommandAction | null>(null);
@@ -70,22 +73,25 @@ export function useVoiceAssistant(token: string | null, language: 'en' | 'hi' = 
   const recognitionRef = useRef<any>(null);
   const timeoutRef = useRef<any>(null);
 
+  const langConfig = getLanguageConfig(language);
+
   const speakText = useCallback(
     async (textToSpeak: string) => {
       setVoiceState('speaking');
+      const normalizedSpeech = normalizeTextForSpeech(textToSpeak, language);
       try {
         if (token) {
-          const url = await api.synthesize(textToSpeak, language, token);
+          const url = await api.synthesize(normalizedSpeech, language, token);
           const audio = new Audio(url);
           setAudioUrl(url);
           audio.onended = () => setVoiceState('idle');
-          audio.onerror = () => fallbackBrowserSpeech(textToSpeak);
+          audio.onerror = () => fallbackBrowserSpeech(normalizedSpeech);
           await audio.play();
         } else {
-          fallbackBrowserSpeech(textToSpeak);
+          fallbackBrowserSpeech(normalizedSpeech);
         }
       } catch {
-        fallbackBrowserSpeech(textToSpeak);
+        fallbackBrowserSpeech(normalizedSpeech);
       }
     },
     [token, language]
@@ -95,7 +101,7 @@ export function useVoiceAssistant(token: string | null, language: 'en' | 'hi' = 
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(textToSpeak);
-      utterance.lang = language === 'hi' ? 'hi-IN' : 'en-US';
+      utterance.lang = langConfig.locale;
       utterance.onend = () => setVoiceState('idle');
       utterance.onerror = () => setVoiceState('idle');
       window.speechSynthesis.speak(utterance);
@@ -103,6 +109,7 @@ export function useVoiceAssistant(token: string | null, language: 'en' | 'hi' = 
       setVoiceState('idle');
     }
   };
+
 
   const processTextQuery = useCallback(
     async (text: string) => {
@@ -164,7 +171,8 @@ export function useVoiceAssistant(token: string | null, language: 'en' | 'hi' = 
         recognitionRef.current = rec;
         rec.continuous = false;
         rec.interimResults = true;
-        rec.lang = language === 'hi' ? 'hi-IN' : 'en-US';
+        rec.lang = langConfig.locale;
+
 
         let capturedText = '';
 

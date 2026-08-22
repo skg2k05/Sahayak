@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Sliders, Type, Eye, Activity, Volume2, Languages, LogOut, User, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useAccessibility } from '../context/AccessibilityContext';
+import { SUPPORTED_LANGUAGES, type SupportedLanguageCode } from '../config/languages';
 import { Button } from '../components/ui';
+
 
 export const Settings: React.FC = () => {
   const { user, logout } = useAuth();
@@ -149,31 +151,29 @@ export const Settings: React.FC = () => {
         </div>
 
         {/* Language option */}
+
         <div className="pt-2 border-t border-zinc-100 space-y-2">
-          <label className="block text-sm font-bold text-zinc-900">Interface Language</label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => setLanguage('en')}
-              className={`focus-ring rounded-xl p-3 font-bold text-xs border transition ${
-                settings.language === 'en'
-                  ? 'border-[#6D5DFB] bg-[#6D5DFB]/10 text-[#6D5DFB]'
-                  : 'border-zinc-200 bg-white text-zinc-700'
-              }`}
-            >
-              English
-            </button>
-            <button
-              onClick={() => setLanguage('hi')}
-              className={`focus-ring rounded-xl p-3 font-bold text-xs border transition ${
-                settings.language === 'hi'
-                  ? 'border-[#6D5DFB] bg-[#6D5DFB]/10 text-[#6D5DFB]'
-                  : 'border-zinc-200 bg-white text-zinc-700'
-              }`}
-            >
-              हिंदी (Hindi)
-            </button>
+          <label className="block text-sm font-bold text-zinc-900">Interface & Voice Language</label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            {SUPPORTED_LANGUAGES.map((lang) => {
+              const isSelected = settings.language === lang.code;
+              return (
+                <button
+                  key={lang.code}
+                  onClick={() => setLanguage(lang.code)}
+                  className={`focus-ring rounded-xl p-3 font-bold text-xs border transition ${
+                    isSelected
+                      ? 'border-[#6D5DFB] bg-[#6D5DFB]/10 text-[#6D5DFB]'
+                      : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100'
+                  }`}
+                >
+                  {lang.nativeName} ({lang.name})
+                </button>
+              );
+            })}
           </div>
         </div>
+
       </div>
 
       <Button variant="danger" className="w-full font-bold" onClick={handleLogout}>

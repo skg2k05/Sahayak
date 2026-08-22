@@ -1,6 +1,8 @@
 import React from 'react';
 import { X, Type, Eye, Activity, Volume2, Languages, Check } from 'lucide-react';
 import { useAccessibility } from '../../context/AccessibilityContext';
+import { SUPPORTED_LANGUAGES, type SupportedLanguageCode } from '../../config/languages';
+
 
 export const AccessibilityPanel: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const {
@@ -145,39 +147,36 @@ export const AccessibilityPanel: React.FC<{ isOpen: boolean; onClose: () => void
           </div>
 
           {/* Preferred Language Selection */}
+
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-4">
             <div className="flex items-center gap-3 mb-3">
               <Languages className="h-5 w-5 text-zinc-700" />
               <div>
                 <span className="block font-semibold text-zinc-900">Preferred Language</span>
-                <span className="text-xs text-zinc-500">Voice output and SMS translation language</span>
+                <span className="text-xs text-zinc-500">Voice output, AI responses, and SMS translation language</span>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setLanguage('en')}
-                className={`focus-ring flex items-center justify-between rounded-xl p-3 font-semibold text-sm border transition ${
-                  settings.language === 'en'
-                    ? 'border-[#6D5DFB] bg-[#6D5DFB]/10 text-[#6D5DFB]'
-                    : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100'
-                }`}
-              >
-                <span>English</span>
-                {settings.language === 'en' && <Check className="h-4 w-4 text-[#6D5DFB]" />}
-              </button>
-              <button
-                onClick={() => setLanguage('hi')}
-                className={`focus-ring flex items-center justify-between rounded-xl p-3 font-semibold text-sm border transition ${
-                  settings.language === 'hi'
-                    ? 'border-[#6D5DFB] bg-[#6D5DFB]/10 text-[#6D5DFB]'
-                    : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100'
-                }`}
-              >
-                <span>हिंदी (Hindi)</span>
-                {settings.language === 'hi' && <Check className="h-4 w-4 text-[#6D5DFB]" />}
-              </button>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-48 overflow-y-auto p-1">
+              {SUPPORTED_LANGUAGES.map((lang) => {
+                const isSelected = settings.language === lang.code;
+                return (
+                  <button
+                    key={lang.code}
+                    onClick={() => setLanguage(lang.code)}
+                    className={`focus-ring flex items-center justify-between rounded-xl p-2.5 font-semibold text-xs border transition ${
+                      isSelected
+                        ? 'border-[#6D5DFB] bg-[#6D5DFB]/10 text-[#6D5DFB]'
+                        : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100'
+                    }`}
+                  >
+                    <span className="truncate">{lang.nativeName}</span>
+                    {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-[#6D5DFB]" />}
+                  </button>
+                );
+              })}
             </div>
           </div>
+
         </div>
 
         <div className="mt-6 border-t border-zinc-100 pt-4 flex justify-end">
