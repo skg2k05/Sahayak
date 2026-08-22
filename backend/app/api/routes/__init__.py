@@ -1,4 +1,4 @@
-from app.api.routes import health, auth, accounts, payees, transactions, translator, voice, fraud
+from app.api.routes import health, auth, accounts, payees, transactions, translator, voice, fraud, chat
 
 __all__ = [
     "health",
@@ -9,4 +9,5 @@ __all__ = [
     "translator",
     "voice",
     "fraud",
+    "chat",
 ]
