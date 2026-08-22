@@ -269,9 +269,22 @@ alembic downgrade -1
 - **Invalidation**: Cache key is immediately deleted when a balance-changing transaction executes (`POST /api/transactions`).
 - **Graceful Fallback**: If Redis is offline or fails, requests transparently query PostgreSQL with zero user impact or 500 errors.
 
+## 9. Security & Authentication Hardening (Phase B7)
+
+- **JWT Authentication**: Secure stateless token issuance using standard HMAC-SHA256 (`HS256`) algorithms, expiration timestamps (`ACCESS_TOKEN_EXPIRE_MINUTES`), and PBKDF2 bcrypt password hashing.
+- **Strong Password Policy**: Enforced during user registration (`POST /api/auth/register`) via Pydantic schema validation:
+  - Minimum length: 8 characters
+  - At least one uppercase letter (`A-Z`)
+  - At least one lowercase letter (`a-z`)
+  - At least one digit (`0-9`)
+- **IP-Based Rate Limiting**:
+  - **Login Protection**: Max 5 login attempts per IP per 15-minute window (`sahayak:rate_limit:login:{ip}`). Exceeding limit returns `HTTP 429 Too Many Requests`.
+  - **Registration Protection**: Max 5 registration attempts per IP per 15-minute window (`sahayak:rate_limit:register:{ip}`). Exceeding limit returns `HTTP 429 Too Many Requests`.
+- **Resilient Redis Fallback**: Redis is utilized for rate limiting and ephemeral state; if Redis becomes unreachable or encounters errors, authentication and registration gracefully continue without throwing 500 errors or blocking legitimate users.
+
 ---
 
-## 9. How to Start FastAPI Application
+## 10. How to Start FastAPI Application
 
 Run the application locally with Uvicorn:
 
@@ -286,7 +299,7 @@ Interactive API documentation:
 
 ---
 
-## 10. How to Run Tests
+## 11. How to Run Tests
 
 Run the full automated test suite using `pytest`:
 
@@ -296,9 +309,9 @@ pytest
 
 ---
 
-## 11. Scope & Deferred Features
+## 12. Scope & Deferred Features
 
-Phase B5 implements Explainable Fraud Detection and Redis Caching.
+Phase B7 implements Authentication Hardening (Password Validation, Login & Registration Rate Limiting, Resilient Redis Fallbacks).
 
 The following features remain explicitly deferred to future implementation phases:
 - Frontend UI components or client-side assets.

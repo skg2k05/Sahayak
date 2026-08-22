@@ -1,6 +1,12 @@
+from unittest.mock import patch
 import pytest
 from app.repositories.user_repository import UserRepository
+from app.core.redis import RedisClient
 
+
+# ==========================================
+# 1. Base Authentication & Registration Tests
+# ==========================================
 
 def test_register_user_success(client):
     """Verify user registration returns HTTP 201, safe user payload, and JWT token."""
@@ -8,7 +14,7 @@ def test_register_user_success(client):
         "full_name": "Anita Sharma",
         "email": "anita@example.com",
         "phone": "+919876543210",
-        "password": "example-password",
+        "password": "ExamplePassword123",
         "preferred_language": "hi-IN",
         "accessibility_settings": {"high_contrast": True},
     }
@@ -35,7 +41,7 @@ def test_register_duplicate_email_rejection(client):
     payload = {
         "full_name": "User One",
         "email": "duplicate@example.com",
-        "password": "password123",
+        "password": "Password123",
     }
     res1 = client.post("/api/auth/register", json=payload)
     assert res1.status_code == 201
@@ -43,7 +49,7 @@ def test_register_duplicate_email_rejection(client):
     payload_duplicate = {
         "full_name": "User Two",
         "email": "duplicate@example.com",
-        "password": "differentpassword",
+        "password": "DifferentPassword123",
     }
     res2 = client.post("/api/auth/register", json=payload_duplicate)
     assert res2.status_code == 400
@@ -56,7 +62,7 @@ def test_register_duplicate_phone_rejection(client):
         "full_name": "User One",
         "email": "user1@example.com",
         "phone": "+919999988888",
-        "password": "password123",
+        "password": "Password123",
     }
     res1 = client.post("/api/auth/register", json=payload1)
     assert res1.status_code == 201
@@ -65,7 +71,7 @@ def test_register_duplicate_phone_rejection(client):
         "full_name": "User Two",
         "email": "user2@example.com",
         "phone": "+919999988888",
-        "password": "password123",
+        "password": "Password123",
     }
     res2 = client.post("/api/auth/register", json=payload2)
     assert res2.status_code == 400
@@ -77,13 +83,13 @@ def test_login_user_success(client):
     reg_payload = {
         "full_name": "Rahul Verma",
         "email": "rahul@example.com",
-        "password": "secret-password-123",
+        "password": "SecretPassword123",
     }
     client.post("/api/auth/register", json=reg_payload)
 
     login_payload = {
         "email": "rahul@example.com",
-        "password": "secret-password-123",
+        "password": "SecretPassword123",
     }
     response = client.post("/api/auth/login", json=login_payload)
     assert response.status_code == 200
@@ -98,13 +104,13 @@ def test_login_invalid_password_rejection(client):
     reg_payload = {
         "full_name": "Rahul Verma",
         "email": "rahul@example.com",
-        "password": "correct-password",
+        "password": "CorrectPassword123",
     }
     client.post("/api/auth/register", json=reg_payload)
 
     login_payload = {
         "email": "rahul@example.com",
-        "password": "wrong-password",
+        "password": "WrongPassword123",
     }
     response = client.post("/api/auth/login", json=login_payload)
     assert response.status_code == 401
@@ -122,7 +128,7 @@ def test_get_me_with_valid_token(client):
     reg_payload = {
         "full_name": "Priya Singh",
         "email": "priya@example.com",
-        "password": "priya-password",
+        "password": "PriyaPassword123",
     }
     reg_res = client.post("/api/auth/register", json=reg_payload)
     token = reg_res.json()["access_token"]
@@ -147,7 +153,7 @@ def test_password_not_returned_in_api_responses(client):
     reg_payload = {
         "full_name": "Test Security",
         "email": "security@example.com",
-        "password": "super-secret-pass",
+        "password": "SuperSecretPass123",
     }
     reg_res = client.post("/api/auth/register", json=reg_payload)
     token = reg_res.json()["access_token"]
@@ -158,7 +164,7 @@ def test_password_not_returned_in_api_responses(client):
 
     login_res = client.post(
         "/api/auth/login",
-        json={"email": "security@example.com", "password": "super-secret-pass"},
+        json={"email": "security@example.com", "password": "SuperSecretPass123"},
     )
     user_login = login_res.json()["user"]
     assert "password" not in user_login
@@ -172,7 +178,7 @@ def test_password_not_returned_in_api_responses(client):
 
 def test_password_stored_as_hash_rather_than_plaintext(client, db_session):
     """Verify password is stored as a secure bcrypt hash in the database, never plaintext."""
-    plaintext_password = "my-secret-password-123"
+    plaintext_password = "MySecretPassword123"
     reg_payload = {
         "full_name": "Hash Check",
         "email": "hashcheck@example.com",
@@ -184,3 +190,132 @@ def test_password_stored_as_hash_rather_than_plaintext(client, db_session):
     assert db_user is not None
     assert db_user.password_hash != plaintext_password
     assert db_user.password_hash.startswith("$2b$")
+
+
+# ==========================================
+# 2. Strong Password Validation Tests (Phase B7)
+# ==========================================
+
+def test_register_password_too_short_rejected(client):
+    """Verify passwords under 8 characters are rejected with HTTP 422."""
+    payload = {
+        "full_name": "Short Pass User",
+        "email": "short@example.com",
+        "password": "Pass1",
+    }
+    response = client.post("/api/auth/register", json=payload)
+    assert response.status_code == 422
+    errors = str(response.json()["detail"]).lower()
+    assert "at least 8 characters" in errors
+
+
+def test_register_password_missing_uppercase_rejected(client):
+    """Verify passwords without uppercase letter are rejected with HTTP 422."""
+    payload = {
+        "full_name": "No Upper User",
+        "email": "noupper@example.com",
+        "password": "password123",
+    }
+    response = client.post("/api/auth/register", json=payload)
+    assert response.status_code == 422
+    errors = str(response.json()["detail"]).lower()
+    assert "uppercase" in errors
+
+
+def test_register_password_missing_lowercase_rejected(client):
+    """Verify passwords without lowercase letter are rejected with HTTP 422."""
+    payload = {
+        "full_name": "No Lower User",
+        "email": "nolower@example.com",
+        "password": "PASSWORD123",
+    }
+    response = client.post("/api/auth/register", json=payload)
+    assert response.status_code == 422
+    errors = str(response.json()["detail"]).lower()
+    assert "lowercase" in errors
+
+
+def test_register_password_missing_digit_rejected(client):
+    """Verify passwords without a digit are rejected with HTTP 422."""
+    payload = {
+        "full_name": "No Digit User",
+        "email": "nodigit@example.com",
+        "password": "PasswordAbc",
+    }
+    response = client.post("/api/auth/register", json=payload)
+    assert response.status_code == 422
+    errors = str(response.json()["detail"]).lower()
+    assert "digit" in errors
+
+
+def test_register_valid_password_accepted(client):
+    """Verify valid password meeting all strength requirements is accepted with HTTP 201."""
+    payload = {
+        "full_name": "Valid Pass User",
+        "email": "validpass@example.com",
+        "password": "ValidStrongPass123",
+    }
+    response = client.post("/api/auth/register", json=payload)
+    assert response.status_code == 201
+    assert "access_token" in response.json()
+
+
+# ==========================================
+# 3. Rate Limiting Tests (Phase B7)
+# ==========================================
+
+def test_login_rate_limiting_exceeded_returns_429(client):
+    """Verify exceeding login attempt limit returns HTTP 429 Too Many Requests."""
+    with patch.object(RedisClient, "increment_rate_limit", return_value=6):
+        payload = {
+            "email": "ratelimit@example.com",
+            "password": "Password123",
+        }
+        response = client.post("/api/auth/login", json=payload)
+        assert response.status_code == 429
+        assert "Too many login attempts" in response.json()["detail"]
+
+
+def test_login_rate_limiting_redis_failure_falls_back_gracefully(client):
+    """Verify Redis failure during login does not throw HTTP 500 and allows auth flow."""
+    # Register user first
+    client.post("/api/auth/register", json={
+        "full_name": "Fallback User",
+        "email": "fallback.login@example.com",
+        "password": "ValidPassword123",
+    })
+
+    # When Redis returns None (simulating outage/exception)
+    with patch.object(RedisClient, "increment_rate_limit", return_value=None):
+        response = client.post("/api/auth/login", json={
+            "email": "fallback.login@example.com",
+            "password": "ValidPassword123",
+        })
+        assert response.status_code == 200
+        assert "access_token" in response.json()
+
+
+def test_register_rate_limiting_exceeded_returns_429(client):
+    """Verify exceeding registration attempt limit returns HTTP 429 Too Many Requests."""
+    with patch.object(RedisClient, "increment_rate_limit", return_value=6):
+        payload = {
+            "full_name": "Rate Limit User",
+            "email": "ratelimit.reg@example.com",
+            "password": "ValidPassword123",
+        }
+        response = client.post("/api/auth/register", json=payload)
+        assert response.status_code == 429
+        assert "Too many registration attempts" in response.json()["detail"]
+
+
+def test_register_rate_limiting_redis_failure_falls_back_gracefully(client):
+    """Verify Redis failure during registration does not throw HTTP 500 and allows registration."""
+    with patch.object(RedisClient, "increment_rate_limit", return_value=None):
+        payload = {
+            "full_name": "Fallback Reg User",
+            "email": "fallback.reg@example.com",
+            "password": "ValidPassword123",
+        }
+        response = client.post("/api/auth/register", json=payload)
+        assert response.status_code == 201
+        assert "access_token" in response.json()

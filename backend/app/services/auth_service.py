@@ -5,10 +5,26 @@ from app.schemas.user_schema import UserRegister, UserLogin, UserResponse, Token
 from app.repositories.user_repository import UserRepository
 from app.repositories.audit_repository import AuditRepository
 from app.core.security import hash_password, verify_password, create_access_token
+from app.core.redis import RedisClient
 
 
 class AuthService:
-    """Service handling user authentication and registration business logic."""
+    """Service handling user authentication, rate limiting, and registration business logic."""
+
+    @staticmethod
+    def check_rate_limit(
+        key: str,
+        max_attempts: int,
+        window_seconds: int,
+        error_message: str,
+    ) -> None:
+        """Check Redis-backed rate limit. If limit is exceeded, raise HTTP 429. Resilient against Redis failures."""
+        attempts = RedisClient.increment_rate_limit(key, window_seconds)
+        if attempts is not None and attempts > max_attempts:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=error_message,
+            )
 
     @staticmethod
     def register_user(db: Session, user_in: UserRegister) -> TokenResponse:
