@@ -355,10 +355,13 @@ class ChatbotService:
 
     @staticmethod
     def _handle_general_question(user_prompt: str, lang: str) -> ChatResponse:
-        """Answer general banking questions via OpenAI or static verified knowledge without user PII."""
-        if settings.OPENAI_API_KEY:
+        """Answer general banking questions via Google Gemini API or static verified knowledge without user PII."""
+        if settings.GEMINI_API_KEY:
             try:
-                client = OpenAI(api_key=settings.OPENAI_API_KEY)
+                from google import genai
+                from google.genai import types
+
+                client = genai.Client(api_key=settings.GEMINI_API_KEY)
                 system_instruction = (
                     "You are Sahayak's helpful AI banking educator for elderly and low-literacy users in India. "
                     "Explain general financial and banking terms (like UPI, IFSC, ATM, fixed deposits) "
@@ -371,17 +374,17 @@ class ChatbotService:
 
                 prompt_text = f"User Question: '{user_prompt}'\nLanguage: '{lang}'"
 
-                completion = client.chat.completions.create(
-                    model=settings.OPENAI_MODEL,
-                    messages=[
-                        {"role": "system", "content": system_instruction},
-                        {"role": "user", "content": prompt_text},
-                    ],
-                    temperature=0.3,
-                    max_tokens=200,
+                response = client.models.generate_content(
+                    model=settings.GEMINI_MODEL,
+                    contents=prompt_text,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_instruction,
+                        temperature=0.3,
+                        max_output_tokens=200,
+                    ),
                 )
 
-                ai_content = completion.choices[0].message.content
+                ai_content = getattr(response, "text", None)
                 if ai_content and ai_content.strip():
                     return ChatResponse(
                         response=ai_content.strip(),
@@ -397,6 +400,7 @@ class ChatbotService:
         return ChatResponse(
             response=res, language=lang, intent="GENERAL_BANKING_QUESTION"
         )
+
 
     @staticmethod
     def _static_banking_knowledge_fallback(prompt: str, lang: str) -> str:
