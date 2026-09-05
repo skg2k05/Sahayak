@@ -176,6 +176,11 @@ npm run dev
 - [x] Deployment instructions & environment configuration documented.
 
 ---
+## Team Members
+
+1. [Sushil Kumar Gauda](https://github.com/skg2k05)
+2. [Anup Kumar Jena](https://github.com/AKJenaX)
+3. [Kamal Nath Mallick](https://github.com/kamalnathmallick)
 
 ## 📄 License
 Distributed under the **MIT License**. See `LICENSE` for more information.
